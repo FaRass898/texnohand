@@ -46,7 +46,7 @@
     });
 
   // Создаём WebSocket-соединение один раз при загрузке страницы
-const socket = new WebSocket('ws://<192.168.224.152>:9000');
+const socket = new WebSocket('wss://<192.168.224.152>:9000');
 
 // Обработчик событий WebSocket (опционально)
 socket.onopen = () => {
