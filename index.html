@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Hand Tracking</title>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils"></script>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+    }
+    video {
+      position: absolute;
+      width: 100%;
+      height: auto;
+    }
+    canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+  </style>
+</head>
+<body>
+  <video id="input_video" autoplay></video>
+  <canvas id="output_canvas"></canvas>
+  <script>
+    const videoElement = document.getElementById('input_video');
+    const canvasElement = document.getElementById('output_canvas');
+    const canvasCtx = canvasElement.getContext('2d');
+
+    // Настройка камеры
+    navigator.mediaDevices.getUserMedia({ video: true }).then((stream) => {
+      videoElement.srcObject = stream;
+    });
+
+    const hands = new Hands({
+      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`,
+    });
+
+    hands.setOptions({
+      maxNumHands: 2,
+      modelComplexity: 1,
+      minDetectionConfidence: 0.7,
+      minTrackingConfidence: 0.7,
+    });
+
+  // Создаём WebSocket-соединение один раз при загрузке страницы
+const socket = new WebSocket('ws://<192.168.224.152>:9000');
+
+// Обработчик событий WebSocket (опционально)
+socket.onopen = () => {
+  console.log('WebSocket соединение установлено');
+};
+
+socket.onerror = (error) => {
+  console.error('WebSocket ошибка:', error);
+};
+
+socket.onclose = () => {
+  console.log('WebSocket соединение закрыто');
+};
+
+// Обработка результатов MediaPipe
+hands.onResults((results) => {
+  canvasElement.width = videoElement.videoWidth;
+  canvasElement.height = videoElement.videoHeight;
+
+  canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+  canvasCtx.drawImage(
+    results.image, 0, 0, canvasElement.width, canvasElement.height
+  );
+
+  if (results.multiHandLandmarks) {
+    // Формируем данные для отправки
+    const data = results.multiHandLandmarks.map((hand) =>
+      hand.map((point) => ({ x: point.x, y: point.y, z: point.z }))
+    );
+
+    // Отправляем данные через WebSocket
+    if (socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify(data));
+    } else {
+      console.warn('WebSocket не готов для отправки данных');
+    }
+  }
+});
+
+      if (results.multiHandLandmarks) {
+        for (const landmarks of results.multiHandLandmarks) {
+          drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, {
+            color: '#00FF00',
+            lineWidth: 5,
+          });
+          drawLandmarks(canvasCtx, landmarks, {
+            color: '#FF0000',
+            lineWidth: 2,
+          });
+        }
+      }
+    });
+
+    const camera = new Camera(videoElement, {
+      onFrame: async () => {
+        await hands.send({ image: videoElement });
+      },
+      width: 1280,
+      height: 720,
+    });
+    camera.start();
+  </script>
+</body>
+</html>
